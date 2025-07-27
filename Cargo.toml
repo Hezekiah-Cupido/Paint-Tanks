@@ -1,0 +1,15 @@
+[package]
+name = "paint_tanks"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+avian3d = "0.2"
+bevy-inspector-egui = "0.30.0"
+
+[dependencies.bevy]
+version = "0.15.3"
+features = [
+    "bevy_pbr",
+    "bevy_gltf"
+]
