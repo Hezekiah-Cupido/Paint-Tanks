@@ -10,12 +10,13 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader, EventWriter},
+        hierarchy::Children,
         query::{With, Without},
-        schedule::IntoSystemConfigs,
-        system::{Commands, Query, Res, ResMut, Resource},
+        resource::Resource,
+        schedule::IntoScheduleConfigs,
+        system::{Commands, Query, Res, ResMut},
     },
     gltf::GltfAssetLabel,
-    hierarchy::{BuildChildren, ChildBuild, Children},
     input::{keyboard::KeyCode, mouse::MouseButton, ButtonInput},
     math::{
         ops::acos,
@@ -105,8 +106,7 @@ fn load_tank_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn spawn_tank(mut commands: Commands, tank_assets: Res<TankAssets>) {
-    if let Some(body) = tank_assets.body.as_ref() {
-        if let Some(turret) = tank_assets.turret.as_ref() {
+    if let Some(body) = tank_assets.body.as_ref() && let Some(turret) = tank_assets.turret.as_ref() {
             commands
                 .spawn((
                     Tank,
@@ -132,7 +132,6 @@ fn spawn_tank(mut commands: Commands, tank_assets: Res<TankAssets>) {
                         ));
                 });
         }
-    }
 }
 
 fn keyboard_input(
@@ -148,10 +147,10 @@ fn keyboard_input(
     let linear = forward as i8 - backward as i8;
     let angular = left as i8 - right as i8;
 
-    if let Ok(player) = player.get_single() {
-        movement_event_writer.send(Movement::Linear(player, linear));
+    if let Ok(player) = player.single() {
+        movement_event_writer.write(Movement::Linear(player, linear));
 
-        movement_event_writer.send(Movement::Angular(player, angular));
+        movement_event_writer.write(Movement::Angular(player, angular));
     }
 }
 
@@ -161,8 +160,8 @@ fn mouse_input(
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     player: Query<Entity, With<Player>>,
 ) {
-    let window = windows.single();
-    let (camera, camera_transform) = camera.single();
+    let window = windows.single().unwrap();
+    let (camera, camera_transform) = camera.single().unwrap();
 
     if let Some(ray) = window
         .cursor_position()
@@ -173,11 +172,13 @@ fn mouse_input(
         {
             let point = ray.get_point(distance);
 
-            turret_movemnt_event_writer.send(TurretMovement {
-                entity: player.single(),
-                x: point.x,
-                z: point.z,
-            });
+            if let Ok(player) = player.single() {
+                turret_movemnt_event_writer.write(TurretMovement {
+                    entity: player,
+                    x: point.x,
+                    z: point.z,
+                });
+            }
         }
     }
 }
@@ -188,8 +189,8 @@ fn mouse_button_input(
     player: Query<Entity, With<Player>>,
 ) {
     if input.just_pressed(MouseButton::Left) {
-        shoot_event_writer.send(Shoot {
-            entity: player.single(),
+        shoot_event_writer.write(Shoot {
+            entity: player.single().unwrap(),
         });
     }
 }
