@@ -17,11 +17,11 @@ use bevy::{
         system::{Commands, Query, Res, ResMut},
     },
     gltf::GltfAssetLabel,
-    input::{keyboard::KeyCode, mouse::MouseButton, ButtonInput},
+    input::{ButtonInput, keyboard::KeyCode, mouse::MouseButton},
     math::{
+        Vec3, Vec3Swizzles,
         ops::acos,
         primitives::{InfinitePlane3d, Sphere},
-        Vec3, Vec3Swizzles,
     },
     pbr::{MeshMaterial3d, StandardMaterial},
     render::{
@@ -59,9 +59,14 @@ pub struct TankAssets {
 pub struct Player;
 
 #[derive(Event)]
-enum Movement {
-    Linear(Entity, i8),
-    Angular(Entity, i8),
+struct Movement {
+    entity: Entity,
+    movement_type: MovementType,
+}
+
+enum MovementType {
+    Linear(i8),
+    Angular(i8),
 }
 
 #[derive(Event)]
@@ -106,32 +111,34 @@ fn load_tank_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn spawn_tank(mut commands: Commands, tank_assets: Res<TankAssets>) {
-    if let Some(body) = tank_assets.body.as_ref() && let Some(turret) = tank_assets.turret.as_ref() {
-            commands
-                .spawn((
-                    Tank,
-                    Player,
-                    RigidBody::Dynamic,
-                    Collider::cuboid(1., 1., 1.),
-                    Mass(100.),
-                    Friction::new(0.9),
-                    Transform::from_xyz(0., 1., 0.),
-                    SceneRoot(body.clone()),
-                ))
-                .with_children(|parent| {
-                    parent
-                        .spawn((
-                            Turret,
-                            Transform::from_xyz(0., 0.5, 0.),
-                            SceneRoot(turret.clone()),
-                        ))
-                        .with_child((
-                            BulletSpawner,
-                            RigidBody::Kinematic,
-                            Transform::from_xyz(0., 0.25, -1.),
-                        ));
-                });
-        }
+    if let Some(body) = tank_assets.body.as_ref()
+        && let Some(turret) = tank_assets.turret.as_ref()
+    {
+        commands
+            .spawn((
+                Tank,
+                Player,
+                RigidBody::Dynamic,
+                Collider::cuboid(1., 1., 1.),
+                Mass(100.),
+                Friction::new(0.9),
+                Transform::from_xyz(0., 1., 0.),
+                SceneRoot(body.clone()),
+            ))
+            .with_children(|parent| {
+                parent
+                    .spawn((
+                        Turret,
+                        Transform::from_xyz(0., 0.5, 0.),
+                        SceneRoot(turret.clone()),
+                    ))
+                    .with_child((
+                        BulletSpawner,
+                        RigidBody::Kinematic,
+                        Transform::from_xyz(0., 0.25, -1.),
+                    ));
+            });
+    }
 }
 
 fn keyboard_input(
@@ -139,18 +146,24 @@ fn keyboard_input(
     input: Res<ButtonInput<KeyCode>>,
     player: Query<Entity, With<Player>>,
 ) {
-    let forward = input.any_pressed([KeyCode::KeyW]);
-    let backward = input.any_pressed([KeyCode::KeyS]);
-    let left = input.any_pressed([KeyCode::KeyA]);
-    let right = input.any_pressed([KeyCode::KeyD]);
-
-    let linear = forward as i8 - backward as i8;
-    let angular = left as i8 - right as i8;
-
     if let Ok(player) = player.single() {
-        movement_event_writer.write(Movement::Linear(player, linear));
+        let forward = input.any_pressed([KeyCode::KeyW]);
+        let backward = input.any_pressed([KeyCode::KeyS]);
+        let left = input.any_pressed([KeyCode::KeyA]);
+        let right = input.any_pressed([KeyCode::KeyD]);
 
-        movement_event_writer.write(Movement::Angular(player, angular));
+        let linear = forward as i8 - backward as i8;
+        let angular = left as i8 - right as i8;
+
+        movement_event_writer.write(Movement {
+            entity: player,
+            movement_type: MovementType::Linear(linear),
+        });
+
+        movement_event_writer.write(Movement {
+            entity: player,
+            movement_type: MovementType::Angular(angular),
+        });
     }
 }
 
@@ -160,26 +173,22 @@ fn mouse_input(
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     player: Query<Entity, With<Player>>,
 ) {
-    let window = windows.single().unwrap();
-    let (camera, camera_transform) = camera.single().unwrap();
-
-    if let Some(ray) = window
-        .cursor_position()
-        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor).ok())
-    {
-        if let Some(distance) =
+    if let Ok(window) = windows.single()
+        && let Ok((camera, camera_transform)) = camera.single()
+        && let Some(ray) = window
+            .cursor_position()
+            .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor).ok())
+        && let Some(distance) =
             ray.intersect_plane(Vec3::new(0., 1., 0.), InfinitePlane3d::new(Vec3::Y))
-        {
-            let point = ray.get_point(distance);
+        && let Ok(player) = player.single()
+    {
+        let point = ray.get_point(distance);
 
-            if let Ok(player) = player.single() {
-                turret_movemnt_event_writer.write(TurretMovement {
-                    entity: player,
-                    x: point.x,
-                    z: point.z,
-                });
-            }
-        }
+        turret_movemnt_event_writer.write(TurretMovement {
+            entity: player,
+            x: point.x,
+            z: point.z,
+        });
     }
 }
 
@@ -188,48 +197,38 @@ fn mouse_button_input(
     input: Res<ButtonInput<MouseButton>>,
     player: Query<Entity, With<Player>>,
 ) {
-    if input.just_pressed(MouseButton::Left) {
-        shoot_event_writer.write(Shoot {
-            entity: player.single().unwrap(),
-        });
+    if input.just_pressed(MouseButton::Left)
+        && let Ok(player) = player.single()
+    {
+        shoot_event_writer.write(Shoot { entity: player });
     }
 }
 
 fn move_tank(
     mut movement_event_reader: EventReader<Movement>,
-    mut tanks: Query<
-        (
-            &mut LinearVelocity,
-            &mut AngularVelocity,
-            &Transform,
-            Entity,
-        ),
-        With<Tank>,
-    >,
+    mut tanks: Query<(&mut LinearVelocity, &mut AngularVelocity, &Transform), With<Tank>>,
     time: Res<Time>,
 ) {
     let delta_time = time.delta_secs();
 
     for event in movement_event_reader.read() {
-        for (mut linear_velocity, mut angular_velocity, transform, tank_entity) in &mut tanks {
-            match event {
-                Movement::Linear(entity, linear_amount) => {
-                    if *entity == tank_entity {
-                        linear_velocity.z += transform.forward().z
-                            * (*linear_amount as f32)
-                            * delta_time
-                            * LINEAR_MOVEMENT_SPEED;
-                        linear_velocity.x += transform.forward().x
-                            * (*linear_amount as f32)
-                            * delta_time
-                            * LINEAR_MOVEMENT_SPEED;
-                    }
+        if let Ok((mut linear_velocity, mut angular_velocity, transform)) =
+            tanks.get_mut(event.entity)
+        {
+            match event.movement_type {
+                MovementType::Linear(linear_amount) => {
+                    linear_velocity.z += transform.forward().z
+                        * (linear_amount as f32)
+                        * delta_time
+                        * LINEAR_MOVEMENT_SPEED;
+                    linear_velocity.x += transform.forward().x
+                        * (linear_amount as f32)
+                        * delta_time
+                        * LINEAR_MOVEMENT_SPEED;
                 }
-                Movement::Angular(entity, angular_amount) => {
-                    if *entity == tank_entity {
-                        angular_velocity.y +=
-                            *angular_amount as f32 * delta_time * ANGULAR_MOVEMENT_SPEED;
-                    }
+                MovementType::Angular(angular_amount) => {
+                    angular_velocity.y +=
+                        angular_amount as f32 * delta_time * ANGULAR_MOVEMENT_SPEED;
                 }
             }
         }
@@ -238,48 +237,46 @@ fn move_tank(
 
 fn move_turret(
     mut turret_movement_event_reader: EventReader<TurretMovement>,
-    tanks: Query<(Entity, &Children), With<Tank>>,
+    tanks: Query<&Children, With<Tank>>,
     mut turret_transforms: Query<(&mut Transform, &GlobalTransform), (With<Turret>, Without<Tank>)>,
     time: Res<Time>,
 ) {
     let delta_time = time.delta_secs();
 
     for event in turret_movement_event_reader.read() {
-        for (entity, children) in &tanks {
-            if event.entity == entity {
-                for child in children {
-                    if let Ok((mut turret_transform, turret_global_transform)) =
-                        turret_transforms.get_mut(*child)
-                    {
-                        let turret_translation = turret_transform.translation.clone();
+        if let Ok(tank_children) = tanks.get(event.entity)
+            && let Some(turret_entity) = tank_children
+                .into_iter()
+                .filter(|&c| turret_transforms.as_readonly().get(*c).is_ok())
+                .nth(0)
+        {
+            if let Ok((mut turret_transform, turret_global_transform)) =
+                turret_transforms.get_mut(*turret_entity)
+            {
+                let turret_translation = turret_transform.translation.clone();
 
-                        let x = event.x;
-                        let y = turret_translation.y;
-                        let z = event.z;
+                let x = event.x;
+                let y = turret_translation.y;
+                let z = event.z;
 
-                        let to_cursor = (Vec3::new(x, y, z) - turret_translation).normalize();
+                let to_cursor = (Vec3::new(x, y, z) - turret_translation).normalize();
 
-                        let _turret_rotation = turret_transform.rotation.clone();
+                let _turret_rotation = turret_transform.rotation.clone();
 
-                        let turret_rotation_x =
-                            (turret_global_transform.rotation() * Vec3::X).normalize();
-                        let turret_rotation_y = turret_global_transform.forward().normalize();
+                let turret_rotation_x = (turret_global_transform.rotation() * Vec3::X).normalize();
+                let turret_rotation_y = turret_global_transform.forward().normalize();
 
-                        let rotation_angle =
-                            acos(turret_rotation_y.xz().dot(to_cursor.xz()).clamp(-1., 1.));
+                let rotation_angle =
+                    acos(turret_rotation_y.xz().dot(to_cursor.xz()).clamp(-1., 1.));
 
-                        if rotation_angle - (PI / 180.) > f32::EPSILON {
-                            let rotation_sign =
-                                -f32::copysign(1., turret_rotation_x.dot(to_cursor));
+                if rotation_angle - (PI / 180.) > f32::EPSILON {
+                    let rotation_sign = -f32::copysign(1., turret_rotation_x.dot(to_cursor));
 
-                            let turret_rotation_rate: f32 = (TURRET_ROTATION_SPEED
-                                / rotation_angle)
-                                .clamp(1., TURRET_ROTATION_SPEED);
-                            turret_transform.rotate_y(
-                                rotation_sign * rotation_angle * turret_rotation_rate * delta_time,
-                            );
-                        }
-                    }
+                    let turret_rotation_rate: f32 =
+                        (TURRET_ROTATION_SPEED / rotation_angle).clamp(1., TURRET_ROTATION_SPEED);
+                    turret_transform.rotate_y(
+                        rotation_sign * rotation_angle * turret_rotation_rate * delta_time,
+                    );
                 }
             }
         }
@@ -288,7 +285,7 @@ fn move_turret(
 
 fn shoot_bullet(
     mut shoot_event_reader: EventReader<Shoot>,
-    tanks: Query<(Entity, &Children), With<Tank>>,
+    tanks: Query<&Children, With<Tank>>,
     turrets: Query<&Children, (With<Turret>, Without<Tank>)>,
     bullet_spawner: Query<&GlobalTransform, With<BulletSpawner>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -296,30 +293,29 @@ fn shoot_bullet(
     mut commands: Commands,
 ) {
     for event in shoot_event_reader.read() {
-        for (tank_entity, tank_children) in &tanks {
-            if event.entity == tank_entity {
-                for tank_child in tank_children {
-                    if let Ok(turret_children) = turrets.get(*tank_child) {
-                        for turret_child in turret_children {
-                            if let Ok(spawner_transform) = bullet_spawner.get(*turret_child) {
-                                let bullet = meshes.add(Sphere::new(0.2));
-                                let bullet_material = materials.add(StandardMaterial {
-                                    base_color: Color::srgba(1., 0.0, 0.0, 1.0),
-                                    ..Default::default()
-                                });
+        if let Ok(tank_children) = tanks.get(event.entity)
+            && let Some(turret_children) = tank_children
+                .into_iter()
+                .filter_map(|t| turrets.get(*t).ok())
+                .nth(0)
+            && let Some(spawner_transform) = turret_children
+                .into_iter()
+                .filter_map(|t| bullet_spawner.get(*t).ok())
+                .nth(0)
+        {
+            let bullet = meshes.add(Sphere::new(0.2));
+            let bullet_material = materials.add(StandardMaterial {
+                base_color: Color::srgba(1., 0.0, 0.0, 1.0),
+                ..Default::default()
+            });
 
-                                commands.spawn((
-                                    RigidBody::Dynamic,
-                                    Mesh3d(bullet.clone()),
-                                    MeshMaterial3d(bullet_material.clone()),
-                                    Transform::from(spawner_transform.clone()),
-                                    LinearVelocity(spawner_transform.forward().into()),
-                                ));
-                            }
-                        }
-                    }
-                }
-            }
+            commands.spawn((
+                RigidBody::Dynamic,
+                Mesh3d(bullet.clone()),
+                MeshMaterial3d(bullet_material.clone()),
+                Transform::from(spawner_transform.clone()),
+                LinearVelocity(spawner_transform.forward().into()),
+            ));
         }
     }
 }
