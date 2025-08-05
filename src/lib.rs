@@ -5,7 +5,7 @@ use avian3d::{
 use bevy::{
     app::{App, Plugin}, color::Color, gizmos::{config::GizmoConfig, AppGizmoBuilder}, DefaultPlugins
 };
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use entities::lights;
 
 mod camera;
@@ -19,6 +19,7 @@ impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             DefaultPlugins,
+            EguiPlugin::default(),
             WorldInspectorPlugin::new(),
             PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
