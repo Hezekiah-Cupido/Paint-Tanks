@@ -11,10 +11,12 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
+    - name: Setup Rust
+      uses: hecrj/setup-rust-action@v2
+      with:
+        rust-version: stable
     - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
