@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "cppdbg",
+            "type": "lldb",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/<executable file>",
+            "program": "${workspaceRoot}/target/debug/${workspaceRootFolderName}",
             "args": [],
             "cwd": "${workspaceFolder}"
         }
