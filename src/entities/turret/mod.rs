@@ -10,7 +10,6 @@ use bevy::{
         hierarchy::ChildOf,
         query::With,
         relationship::RelatedSpawnerCommands,
-        resource::Resource,
         system::{Query, Res},
         world::World,
     },
@@ -19,11 +18,6 @@ use bevy::{
 };
 
 const TURRET_ROTATION_SPEED: f32 = 3.;
-
-#[derive(Resource)]
-pub struct TurretAsset {
-    pub turret: Box<dyn TurretSpawner + Sync + Send>,
-}
 
 pub trait TurretSpawner {
     fn spawn_turret(&self, commands: &mut RelatedSpawnerCommands<'_, ChildOf>, world: &World);
