@@ -1,97 +1,63 @@
-use avian3d::prelude::{AngularVelocity, Collider, Friction, LinearVelocity, Mass, RigidBody};
 use bevy::{
     app::{App, Startup, Update},
-    asset::{AssetServer, Handle},
     ecs::{
         component::Component,
         entity::Entity,
-        event::{Event, EventReader, EventWriter},
+        event::EventWriter,
         hierarchy::Children,
         query::With,
         resource::Resource,
         schedule::IntoScheduleConfigs,
-        system::{Commands, Query, Res}, world::World,
+        system::{Commands, Query, Res},
+        world::World,
     },
-    gltf::GltfAssetLabel,
-    input::{keyboard::KeyCode, mouse::MouseButton, ButtonInput},
-    math::{primitives::InfinitePlane3d, Vec3},
+    input::{ButtonInput, keyboard::KeyCode, mouse::MouseButton},
+    math::{Vec3, primitives::InfinitePlane3d},
     render::camera::Camera,
-    scene::{Scene, SceneRoot},
-    time::Time,
-    transform::components::{GlobalTransform, Transform},
+    transform::components::GlobalTransform,
     window::Window,
 };
 
 use crate::{
     camera::MainCamera,
-    entities::turret::{Shoot, Turret, TurretAsset, TurretMovement, basic_turret::BasicTurret},
+    entities::{
+        tank_body::{Movement, MovementType, TankBodySpawner, basic_tank_body::BasicTankBody},
+        turret::{Shoot, Turret, TurretMovement, TurretSpawner, basic_turret::BasicTurret},
+    },
 };
-
-const LINEAR_MOVEMENT_SPEED: f32 = 10.;
-const ANGULAR_MOVEMENT_SPEED: f32 = 50.;
-
-#[derive(Component)]
-pub struct Tank;
 
 #[derive(Resource)]
 pub struct TankAssets {
-    body: Option<Handle<Scene>>,
+    turret: Box<dyn TurretSpawner + Send + Sync>,
+    tank_body: Box<dyn TankBodySpawner + Send + Sync>,
 }
 
 #[derive(Component)]
 pub struct Player;
 
-#[derive(Event)]
-struct Movement {
-    entity: Entity,
-    movement_type: MovementType,
-}
-
-enum MovementType {
-    Linear(i8),
-    Angular(i8),
-}
-
 pub(super) fn plugin(app: &mut App) {
-    app.add_event::<Movement>()
-        .add_systems(Startup, (load_tank_assets, spawn_tank).chain())
+    app.add_systems(Startup, (load_tank_assets, spawn_tank).chain())
         .add_systems(
             Update,
-            (keyboard_input, mouse_input, mouse_button_input, move_tank).chain(),
+            (keyboard_input, mouse_input, mouse_button_input),
         );
 }
 
-fn load_tank_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let body = asset_server.load(GltfAssetLabel::Scene(0).from_asset("tank_body.gltf"));
-
-    commands.insert_resource(TurretAsset {
+fn load_tank_assets(mut commands: Commands) {
+    commands.insert_resource(TankAssets {
         turret: Box::new(BasicTurret {}),
+        tank_body: Box::new(BasicTankBody {}),
     });
-    commands.insert_resource(TankAssets { body: Some(body) });
 }
 
-fn spawn_tank(
-    mut commands: Commands,
-    world: &World,
-    tank_assets: Res<TankAssets>,
-    turret_asset: Res<TurretAsset>,
-) {
-    if let Some(body) = tank_assets.body.as_ref() {
-        commands
-            .spawn((
-                Tank,
-                Player,
-                RigidBody::Dynamic,
-                Collider::cuboid(1., 1., 1.),
-                Mass(100.),
-                Friction::new(0.9),
-                Transform::from_xyz(0., 1., 0.),
-                SceneRoot(body.clone()),
-            ))
-            .with_children(|parent| {
-                turret_asset.turret.spawn_turret(parent, world);
-            });
-    }
+fn spawn_tank(mut commands: Commands, world: &World, tank_assets: Res<TankAssets>) {
+    tank_assets
+        .tank_body
+        .spawn(&mut commands, world)
+        .insert(Player)
+        .with_children(|parent| {
+            tank_assets.turret.spawn_turret(parent, world);
+        });
 }
 
 fn keyboard_input(
@@ -164,36 +130,5 @@ fn mouse_button_input(
             .nth(0)
     {
         shoot_event_writer.write(Shoot { turret: *turret });
-    }
-}
-
-fn move_tank(
-    mut movement_event_reader: EventReader<Movement>,
-    mut tanks: Query<(&mut LinearVelocity, &mut AngularVelocity, &Transform), With<Tank>>,
-    time: Res<Time>,
-) {
-    let delta_time = time.delta_secs();
-
-    for event in movement_event_reader.read() {
-        if let Ok((mut linear_velocity, mut angular_velocity, transform)) =
-            tanks.get_mut(event.entity)
-        {
-            match event.movement_type {
-                MovementType::Linear(linear_amount) => {
-                    linear_velocity.z += transform.forward().z
-                        * (linear_amount as f32)
-                        * delta_time
-                        * LINEAR_MOVEMENT_SPEED;
-                    linear_velocity.x += transform.forward().x
-                        * (linear_amount as f32)
-                        * delta_time
-                        * LINEAR_MOVEMENT_SPEED;
-                }
-                MovementType::Angular(angular_amount) => {
-                    angular_velocity.y +=
-                        angular_amount as f32 * delta_time * ANGULAR_MOVEMENT_SPEED;
-                }
-            }
-        }
     }
 }

@@ -11,7 +11,10 @@ use bevy::{
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use entities::lights;
 
-use crate::entities::turret::{self, basic_turret};
+use crate::entities::{
+    tank_body::{self, basic_tank_body},
+    turret::{self, basic_turret},
+};
 
 mod camera;
 mod entities;
@@ -35,6 +38,8 @@ impl Plugin for AppPlugin {
             maps::plugin,
             turret::plugin,
             basic_turret::plugin,
+            tank_body::plugin,
+            basic_tank_body::plugin,
             tank::plugin,
         ))
         .insert_gizmo_config(
