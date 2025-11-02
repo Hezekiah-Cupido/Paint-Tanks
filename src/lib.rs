@@ -12,7 +12,7 @@ use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use entities::lights;
 
 use crate::entities::{
-    tank_body::{self, basic_tank_body},
+    tank_body::{self},
     turret::{self, basic_turret},
 };
 
@@ -39,7 +39,6 @@ impl Plugin for AppPlugin {
             turret::plugin,
             basic_turret::plugin,
             tank_body::plugin,
-            basic_tank_body::plugin,
             tank::plugin,
         ))
         .insert_gizmo_config(
