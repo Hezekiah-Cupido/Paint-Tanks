@@ -3,6 +3,7 @@ pub(crate) mod basic_turret;
 use avian3d::math::PI;
 use bevy::{
     app::{App, Update},
+    asset::AssetServer,
     ecs::{
         component::Component,
         entity::Entity,
@@ -11,7 +12,6 @@ use bevy::{
         query::With,
         relationship::RelatedSpawnerCommands,
         system::{Query, Res},
-        world::World,
     },
     math::{Vec3, Vec3Swizzles, ops::acos},
     transform::components::{GlobalTransform, Transform},
@@ -20,7 +20,11 @@ use bevy::{
 const TURRET_ROTATION_SPEED: f32 = 3.;
 
 pub trait TurretSpawner {
-    fn spawn_turret(&self, commands: &mut RelatedSpawnerCommands<'_, ChildOf>, world: &World);
+    fn spawn_turret(
+        &self,
+        commands: &mut RelatedSpawnerCommands<'_, ChildOf>,
+        asset_server: &AssetServer,
+    );
 }
 
 #[derive(Component)]

@@ -3,12 +3,13 @@ pub(crate) mod basic_tank_body;
 use avian3d::prelude::{AngularVelocity, LinearVelocity};
 use bevy::{
     app::{App, Update},
+    asset::AssetServer,
     ecs::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader},
         query::With,
-        system::{Commands, EntityCommands, Query, Res}, world::World,
+        system::{Commands, EntityCommands, Query, Res},
     },
     time::Time,
     transform::components::Transform,
@@ -18,7 +19,11 @@ const LINEAR_MOVEMENT_SPEED: f32 = 10.;
 const ANGULAR_MOVEMENT_SPEED: f32 = 50.;
 
 pub trait TankBodySpawner {
-    fn spawn<'a>(&self, commands: &'a mut Commands, world: &World) -> EntityCommands<'a>;
+    fn spawn<'a>(
+        &self,
+        commands: &'a mut Commands,
+        asset_server: &AssetServer,
+    ) -> EntityCommands<'a>;
 }
 
 #[derive(Event)]
@@ -33,6 +38,7 @@ pub enum MovementType {
 }
 
 #[derive(Component, Default)]
+#[require(Transform::from_xyz(0., 0.5, 0.))]
 pub struct TankBody;
 
 pub fn plugin(app: &mut App) {
