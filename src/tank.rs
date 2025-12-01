@@ -19,11 +19,28 @@ use bevy::{
 use crate::{
     camera::MainCamera,
     entities::{
-        tank_body::{Movement, MovementType, TankBodySpawner, basic_tank_body::BasicTankBody},
-        turret::{Shoot, Turret, TurretMovement, TurretSpawner, basic_turret::BasicTurret},
+        tank_body::{
+            self, Movement, MovementType, TankBodySpawner, basic_tank_body::BasicTankBody,
+        },
+        turret::{self, Shoot, Turret, TurretMovement, TurretSpawner, basic_turret::BasicTurret},
     },
     maps::SpawnPoint,
 };
+
+pub(super) fn plugin(app: &mut App) {
+    app.add_plugins((turret::plugin, tank_body::plugin))
+        .add_event::<SpawnTank>()
+        .add_systems(
+            Update,
+            (
+                spawn_tank_keyboard_input,
+                spawn_tank,
+                keyboard_input,
+                mouse_input,
+                mouse_button_input,
+            ),
+        );
+}
 
 #[derive(Event)]
 struct SpawnTank {
@@ -32,23 +49,14 @@ struct SpawnTank {
     tank_body: Box<dyn TankBodySpawner + Send + Sync>,
 }
 
+#[derive(Component)]
+pub struct Health(pub u8);
+
 #[derive(Component, Clone, Copy, PartialEq)]
+#[require(Health(100))]
 pub enum Player {
     User,
     Program,
-}
-
-pub(super) fn plugin(app: &mut App) {
-    app.add_event::<SpawnTank>().add_systems(
-        Update,
-        (
-            spawn_tank_keyboard_input,
-            spawn_tank,
-            keyboard_input,
-            mouse_input,
-            mouse_button_input,
-        ),
-    );
 }
 
 fn spawn_tank(
@@ -66,8 +74,7 @@ fn spawn_tank(
             event
                 .tank_body
                 .spawn(&mut commands, &asset_server.as_ref())
-                .insert(event.player)
-                .insert(*transform)
+                .insert((event.player, *transform))
                 .with_children(|parent| {
                     event.turret.spawn_turret(parent, asset_server.as_ref());
                 });

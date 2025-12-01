@@ -17,6 +17,13 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 
+pub fn plugin(app: &mut App) {
+    app.add_plugins(basic_turret::plugin)
+        .add_event::<TurretMovement>()
+        .add_event::<Shoot>()
+        .add_systems(Update, move_turret);
+}
+
 const TURRET_ROTATION_SPEED: f32 = 3.;
 
 pub trait TurretSpawner {
@@ -40,12 +47,6 @@ pub struct TurretMovement {
     pub turret_entity: Entity,
     pub x: f32,
     pub z: f32,
-}
-
-pub fn plugin(app: &mut App) {
-    app.add_event::<TurretMovement>()
-        .add_event::<Shoot>()
-        .add_systems(Update, move_turret);
 }
 
 #[derive(Component, Default)]
