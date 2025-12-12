@@ -24,10 +24,10 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 
+use crate::systems::despawn_entity::DespawnEntity;
 use crate::{
     entities::{
         bullet::Bullet,
-        despawn_entity::DespawnEntity,
         turret::{BulletSpawner, Turret, TurretSpawner},
     },
     tank::{Health, Player},

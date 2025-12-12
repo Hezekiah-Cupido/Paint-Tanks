@@ -11,12 +11,13 @@ use bevy::{
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use entities::lights;
 
-use crate::entities::despawn_entity;
+use crate::systems::despawn_entity;
 
 mod camera;
 mod diagnostics;
 mod entities;
 mod maps;
+mod systems;
 mod tank;
 
 pub struct AppPlugin;
