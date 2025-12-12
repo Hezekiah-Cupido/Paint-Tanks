@@ -1,17 +1,17 @@
 use bevy::{
     app::{App, Update},
     asset::AssetServer,
+    camera::Camera,
     ecs::{
         component::Component,
         entity::Entity,
-        event::{Event, EventReader, EventWriter},
         hierarchy::Children,
+        message::{Message, MessageReader, MessageWriter},
         query::With,
         system::{Commands, Query, Res},
     },
     input::{ButtonInput, keyboard::KeyCode, mouse::MouseButton},
     math::{Vec3, primitives::InfinitePlane3d},
-    render::camera::Camera,
     transform::components::{GlobalTransform, Transform},
     window::Window,
 };
@@ -29,7 +29,7 @@ use crate::{
 
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins((turret::plugin, tank_body::plugin))
-        .add_event::<SpawnTank>()
+        .add_message::<SpawnTank>()
         .add_systems(
             Update,
             (
@@ -42,7 +42,7 @@ pub(super) fn plugin(app: &mut App) {
         );
 }
 
-#[derive(Event)]
+#[derive(Message)]
 struct SpawnTank {
     player: Player,
     turret: Box<dyn TurretSpawner + Send + Sync>,
@@ -61,7 +61,7 @@ pub enum Player {
 
 fn spawn_tank(
     mut commands: Commands,
-    mut spawn_tank_event_reader: EventReader<SpawnTank>,
+    mut spawn_tank_event_reader: MessageReader<SpawnTank>,
     mut spawn_points: Query<(&mut SpawnPoint, &Transform), With<SpawnPoint>>,
     asset_server: Res<AssetServer>,
 ) {
@@ -83,7 +83,7 @@ fn spawn_tank(
 }
 
 fn spawn_tank_keyboard_input(
-    mut spawn_tank_event_writer: EventWriter<SpawnTank>,
+    mut spawn_tank_event_writer: MessageWriter<SpawnTank>,
     spawn_points: Query<&SpawnPoint, With<SpawnPoint>>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
@@ -104,7 +104,7 @@ fn spawn_tank_keyboard_input(
 }
 
 fn keyboard_input(
-    mut movement_event_writer: EventWriter<Movement>,
+    mut movement_event_writer: MessageWriter<Movement>,
     input: Res<ButtonInput<KeyCode>>,
     player: Query<(Entity, &Player), With<Player>>,
 ) {
@@ -130,7 +130,7 @@ fn keyboard_input(
 }
 
 fn mouse_input(
-    mut turret_movemnt_event_writer: EventWriter<TurretMovement>,
+    mut turret_movemnt_event_writer: MessageWriter<TurretMovement>,
     windows: Query<&Window>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     player_children: Query<(&Children, &Player), With<Player>>,
@@ -163,7 +163,7 @@ fn mouse_input(
 }
 
 fn mouse_button_input(
-    mut shoot_event_writer: EventWriter<Shoot>,
+    mut shoot_event_writer: MessageWriter<Shoot>,
     input: Res<ButtonInput<MouseButton>>,
     player_children: Query<(&Children, &Player), With<Player>>,
     turret_entities: Query<Entity, With<Turret>>,

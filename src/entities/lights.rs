@@ -1,8 +1,8 @@
 use bevy::{
     app::{App, Startup},
     ecs::{component::Component, system::Commands},
+    light::SpotLight,
     math::Vec3,
-    pbr::SpotLight,
     transform::components::Transform,
 };
 

@@ -7,11 +7,11 @@ edition = "2024"
 debug = "full"
 
 [dependencies]
-avian3d = "0.3.1"
-bevy-inspector-egui = "0.32.0"
+avian3d = "0.4.1"
+bevy-inspector-egui = "0.35.0"
 
 [dependencies.bevy]
-version = "0.16.1"
+version = "0.17.3"
 features = [
     "bevy_pbr",
     "bevy_gltf"
