@@ -14,6 +14,7 @@ use entities::lights;
 use crate::entities::despawn_entity;
 
 mod camera;
+mod diagnostics;
 mod entities;
 mod maps;
 mod tank;
@@ -28,6 +29,7 @@ impl Plugin for AppPlugin {
             WorldInspectorPlugin::new(),
             PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
+            diagnostics::plugin,
         ))
         .add_plugins((
             camera::plugin,
