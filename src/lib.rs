@@ -11,14 +11,13 @@ use bevy::{
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use entities::lights;
 
-use crate::entities::{
-    tank_body::{self},
-    turret::{self, basic_turret},
-};
+use crate::systems::despawn_entity;
 
 mod camera;
+mod diagnostics;
 mod entities;
 mod maps;
+mod systems;
 mod tank;
 
 pub struct AppPlugin;
@@ -31,14 +30,13 @@ impl Plugin for AppPlugin {
             WorldInspectorPlugin::new(),
             PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
+            diagnostics::plugin,
         ))
         .add_plugins((
-            lights::plugin,
             camera::plugin,
+            despawn_entity::plugin,
+            lights::plugin,
             maps::plugin,
-            turret::plugin,
-            basic_turret::plugin,
-            tank_body::plugin,
             tank::plugin,
         ))
         .insert_gizmo_config(

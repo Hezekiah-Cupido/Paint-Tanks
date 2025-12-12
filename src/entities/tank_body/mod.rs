@@ -15,6 +15,10 @@ use bevy::{
     transform::components::Transform,
 };
 
+pub fn plugin(app: &mut App) {
+    app.add_event::<Movement>().add_systems(Update, move_tank);
+}
+
 const LINEAR_MOVEMENT_SPEED: f32 = 10.;
 const ANGULAR_MOVEMENT_SPEED: f32 = 50.;
 
@@ -40,10 +44,6 @@ pub enum MovementType {
 #[derive(Component, Default)]
 #[require(Transform::from_xyz(0., 0.5, 0.))]
 pub struct TankBody;
-
-pub fn plugin(app: &mut App) {
-    app.add_event::<Movement>().add_systems(Update, move_tank);
-}
 
 fn move_tank(
     mut movement_event_reader: EventReader<Movement>,

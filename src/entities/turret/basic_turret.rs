@@ -1,4 +1,6 @@
-use avian3d::prelude::{LinearVelocity, RigidBody};
+use avian3d::prelude::{
+    Collider, CollisionEventsEnabled, LinearVelocity, OnCollisionStart, RigidBody,
+};
 use bevy::{
     app::Update,
     asset::{AssetServer, Assets},
@@ -8,6 +10,7 @@ use bevy::{
         component::Component,
         event::EventReader,
         hierarchy::{ChildOf, Children},
+        observer::Trigger,
         query::With,
         relationship::RelatedSpawnerCommands,
         system::{Commands, Query, ResMut},
@@ -21,7 +24,20 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 
-use crate::entities::turret::{BulletSpawner, Turret, TurretSpawner};
+use crate::systems::despawn_entity::DespawnEntity;
+use crate::{
+    entities::{
+        bullet::Bullet,
+        turret::{BulletSpawner, Turret, TurretSpawner},
+    },
+    tank::{Health, Player},
+};
+
+pub fn plugin(app: &mut bevy::app::App) {
+    app.add_systems(Update, shoot_bullet);
+}
+
+const BULLET_SPEED: f32 = 20.;
 
 trait BasicTurretSpawner {
     fn spawn_basic_turret(&mut self, asset_server: &AssetServer);
@@ -58,10 +74,6 @@ impl BasicTurretSpawner for RelatedSpawnerCommands<'_, ChildOf> {
     }
 }
 
-pub fn plugin(app: &mut bevy::app::App) {
-    app.add_systems(Update, shoot_bullet);
-}
-
 fn shoot_bullet(
     mut shoot_event_reader: EventReader<super::Shoot>,
     turrets: Query<&Children, With<BasicTurret>>,
@@ -83,13 +95,39 @@ fn shoot_bullet(
                 ..Default::default()
             });
 
-            commands.spawn((
-                RigidBody::Dynamic,
-                Mesh3d(bullet.clone()),
-                MeshMaterial3d(bullet_material.clone()),
-                Transform::from(spawner_transform.clone()),
-                LinearVelocity(spawner_transform.forward().into()),
-            ));
+            commands
+                .spawn((
+                    Bullet::new(50),
+                    Mesh3d(bullet.clone()),
+                    MeshMaterial3d(bullet_material.clone()),
+                    Transform::from(spawner_transform.clone()),
+                    RigidBody::Dynamic,
+                    Collider::sphere(0.2),
+                    CollisionEventsEnabled,
+                    LinearVelocity(spawner_transform.forward() * BULLET_SPEED),
+                ))
+                .observe(
+                    |trigger: Trigger<OnCollisionStart>,
+                     mut commands: Commands<'_, '_>,
+                     bullets: Query<&Bullet>,
+                     mut players: Query<&mut Health, With<Player>>| {
+                        let bullet_entity = trigger.target();
+                        let tank = trigger.collider;
+
+                        if let Ok(mut player_health) = players.get_mut(tank)
+                            && let Ok(bullet) = bullets.get(bullet_entity)
+                        {
+                            player_health.0 = player_health.0.saturating_sub(bullet.damage);
+                            println!("Hit: {}", player_health.0.clone());
+
+                            if player_health.0 == 0 {
+                                commands.entity(tank).insert(DespawnEntity);
+                            }
+
+                            commands.entity(bullet_entity).insert(DespawnEntity);
+                        }
+                    },
+                );
         }
     }
 }
