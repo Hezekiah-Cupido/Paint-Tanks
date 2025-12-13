@@ -7,7 +7,7 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        event::{Event, EventReader},
+        message::{Message, MessageReader},
         query::With,
         system::{Commands, EntityCommands, Query, Res},
     },
@@ -16,7 +16,7 @@ use bevy::{
 };
 
 pub fn plugin(app: &mut App) {
-    app.add_event::<Movement>().add_systems(Update, move_tank);
+    app.add_message::<Movement>().add_systems(Update, move_tank);
 }
 
 const LINEAR_MOVEMENT_SPEED: f32 = 10.;
@@ -30,7 +30,7 @@ pub trait TankBodySpawner {
     ) -> EntityCommands<'a>;
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct Movement {
     pub entity: Entity,
     pub movement_type: MovementType,
@@ -46,7 +46,7 @@ pub enum MovementType {
 pub struct TankBody;
 
 fn move_tank(
-    mut movement_event_reader: EventReader<Movement>,
+    mut movement_event_reader: MessageReader<Movement>,
     mut tanks: Query<(&mut LinearVelocity, &mut AngularVelocity, &Transform), With<TankBody>>,
     time: Res<Time>,
 ) {

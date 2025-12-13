@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,12 +13,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Setup Rust
-      uses: hecrj/setup-rust-action@v2
-      with:
-        rust-version: stable
-    - uses: actions/checkout@v4
-    - run: sudo apt-get update
-    - run: sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0
-    - name: Build
-      run: cargo build --verbose
+      - name: Setup Rust
+        uses: hecrj/setup-rust-action@v2
+        with:
+          rust-version: stable
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update
+      - run: sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev
+      - name: Build
+        run: cargo build --verbose

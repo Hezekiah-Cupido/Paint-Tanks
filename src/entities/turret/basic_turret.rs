@@ -1,5 +1,5 @@
 use avian3d::prelude::{
-    Collider, CollisionEventsEnabled, LinearVelocity, OnCollisionStart, RigidBody,
+    Collider, CollisionEventsEnabled, CollisionStart, LinearVelocity, RigidBody,
 };
 use bevy::{
     app::Update,
@@ -8,18 +8,18 @@ use bevy::{
     ecs::{
         children,
         component::Component,
-        event::EventReader,
         hierarchy::{ChildOf, Children},
-        observer::Trigger,
+        message::MessageReader,
+        observer::On,
         query::With,
         relationship::RelatedSpawnerCommands,
         system::{Commands, Query, ResMut},
     },
     gltf::GltfAssetLabel,
     math::primitives::Sphere,
+    mesh::Mesh,
     pbr::{MeshMaterial3d, StandardMaterial},
-    prelude::SpawnRelated,
-    render::mesh::{Mesh, Mesh3d},
+    prelude::{Mesh3d, SpawnRelated},
     scene::SceneRoot,
     transform::components::{GlobalTransform, Transform},
 };
@@ -75,7 +75,7 @@ impl BasicTurretSpawner for RelatedSpawnerCommands<'_, ChildOf> {
 }
 
 fn shoot_bullet(
-    mut shoot_event_reader: EventReader<super::Shoot>,
+    mut shoot_event_reader: MessageReader<super::Shoot>,
     turrets: Query<&Children, With<BasicTurret>>,
     bullet_spawner: Query<&GlobalTransform, With<super::BulletSpawner>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -107,12 +107,12 @@ fn shoot_bullet(
                     LinearVelocity(spawner_transform.forward() * BULLET_SPEED),
                 ))
                 .observe(
-                    |trigger: Trigger<OnCollisionStart>,
+                    |collision_event: On<CollisionStart>,
                      mut commands: Commands<'_, '_>,
                      bullets: Query<&Bullet>,
                      mut players: Query<&mut Health, With<Player>>| {
-                        let bullet_entity = trigger.target();
-                        let tank = trigger.collider;
+                        let bullet_entity = collision_event.event().collider1;
+                        let tank = collision_event.event().collider2;
 
                         if let Ok(mut player_health) = players.get_mut(tank)
                             && let Ok(bullet) = bullets.get(bullet_entity)

@@ -7,8 +7,8 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        event::{Event, EventReader},
         hierarchy::ChildOf,
+        message::{Message, MessageReader},
         query::With,
         relationship::RelatedSpawnerCommands,
         system::{Query, Res},
@@ -19,8 +19,8 @@ use bevy::{
 
 pub fn plugin(app: &mut App) {
     app.add_plugins(basic_turret::plugin)
-        .add_event::<TurretMovement>()
-        .add_event::<Shoot>()
+        .add_message::<TurretMovement>()
+        .add_message::<Shoot>()
         .add_systems(Update, move_turret);
 }
 
@@ -37,12 +37,12 @@ pub trait TurretSpawner {
 #[derive(Component)]
 pub struct BulletSpawner;
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct Shoot {
     pub turret: Entity,
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct TurretMovement {
     pub turret_entity: Entity,
     pub x: f32,
@@ -53,7 +53,7 @@ pub struct TurretMovement {
 pub struct Turret;
 
 fn move_turret(
-    mut turret_movement_event_reader: EventReader<TurretMovement>,
+    mut turret_movement_event_reader: MessageReader<TurretMovement>,
     mut turret_transforms: Query<(&mut Transform, &GlobalTransform), With<Turret>>,
     time: Res<bevy::time::Time>,
 ) {
