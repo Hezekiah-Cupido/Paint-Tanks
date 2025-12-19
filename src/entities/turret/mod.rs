@@ -17,8 +17,10 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 
+use crate::entities::bullet;
+
 pub fn plugin(app: &mut App) {
-    app.add_plugins(basic_turret::plugin)
+    app.add_plugins((basic_turret::plugin, bullet::plugin))
         .add_message::<TurretMovement>()
         .add_message::<Shoot>()
         .add_systems(Update, move_turret);

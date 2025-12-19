@@ -11,7 +11,7 @@ use bevy::{
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use entities::lights;
 
-use crate::systems::despawn_entity;
+use crate::{entities::paintable_surface, systems::despawn_entity};
 
 mod camera;
 mod diagnostics;
@@ -37,6 +37,7 @@ impl Plugin for AppPlugin {
             despawn_entity::plugin,
             lights::plugin,
             maps::plugin,
+            paintable_surface::plugin,
             tank::plugin,
         ))
         .insert_gizmo_config(

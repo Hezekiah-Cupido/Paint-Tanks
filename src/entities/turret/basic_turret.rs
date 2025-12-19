@@ -1,6 +1,4 @@
-use avian3d::prelude::{
-    Collider, CollisionEventsEnabled, CollisionStart, LinearVelocity, RigidBody,
-};
+use avian3d::prelude::{Collider, CollisionStart, LinearVelocity, RigidBody};
 use bevy::{
     app::Update,
     asset::{AssetServer, Assets},
@@ -24,7 +22,7 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 
-use crate::systems::despawn_entity::DespawnEntity;
+use crate::{entities::paintable_surface::PaintingObject, systems::despawn_entity::DespawnEntity};
 use crate::{
     entities::{
         bullet::Bullet,
@@ -74,6 +72,7 @@ impl BasicTurretSpawner for RelatedSpawnerCommands<'_, ChildOf> {
     }
 }
 
+// TODO: move to Turret component and use template design pattern for bullet mesh
 fn shoot_bullet(
     mut shoot_event_reader: MessageReader<super::Shoot>,
     turrets: Query<&Children, With<BasicTurret>>,
@@ -82,6 +81,8 @@ fn shoot_bullet(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,
 ) {
+    let colour = Color::srgba(1., 0.0, 0.0, 1.0);
+
     for event in shoot_event_reader.read() {
         if let Ok(turret_children) = turrets.get(event.turret)
             && let Some(spawner_transform) = turret_children
@@ -91,19 +92,18 @@ fn shoot_bullet(
         {
             let bullet = meshes.add(Sphere::new(0.2));
             let bullet_material = materials.add(StandardMaterial {
-                base_color: Color::srgba(1., 0.0, 0.0, 1.0),
+                base_color: colour,
                 ..Default::default()
             });
 
             commands
                 .spawn((
                     Bullet::new(50),
+                    PaintingObject::new(colour),
                     Mesh3d(bullet.clone()),
                     MeshMaterial3d(bullet_material.clone()),
                     Transform::from(spawner_transform.clone()),
-                    RigidBody::Dynamic,
                     Collider::sphere(0.2),
-                    CollisionEventsEnabled,
                     LinearVelocity(spawner_transform.forward() * BULLET_SPEED),
                 ))
                 .observe(
