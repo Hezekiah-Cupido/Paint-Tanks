@@ -12,6 +12,8 @@ use bevy::{
     transform::components::Transform,
 };
 
+use crate::entities::paintable_surface::PaintableSurface;
+
 #[derive(Component)]
 #[require(Transform::from_xyz(0., 0.5, 0.))]
 pub struct SpawnPoint(pub bool);
@@ -28,6 +30,7 @@ fn spawn_map(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.spawn((
         Map,
+        PaintableSurface,
         RigidBody::Static,
         Collider::cuboid(10., 0.5, 10.),
         Friction::new(0.9),

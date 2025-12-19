@@ -36,10 +36,10 @@ impl BasicTankBodySpawner for Commands<'_, '_> {
         return self.spawn((
             BasicTankBody,
             RigidBody::Dynamic,
-            Collider::cuboid(1., 1., 1.),
+            Collider::cuboid(1., 1.25, 1.),
             Mass(100.),
             Friction::new(0.9),
             SceneRoot(tank_body),
-        ))
+        ));
     }
 }
