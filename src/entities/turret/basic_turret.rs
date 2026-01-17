@@ -2,7 +2,6 @@ use avian3d::prelude::{Collider, CollisionStart, LinearVelocity, RigidBody};
 use bevy::{
     app::Update,
     asset::{AssetServer, Assets},
-    color::Color,
     ecs::{
         children,
         component::Component,
@@ -22,7 +21,9 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 
-use crate::{entities::paintable_surface::PaintingObject, systems::despawn_entity::DespawnEntity};
+use crate::{
+    entities::paintable_surface::PaintingObject, systems::despawn_entity::DespawnEntity, tank::Team,
+};
 use crate::{
     entities::{
         bullet::Bullet,
@@ -75,16 +76,20 @@ impl BasicTurretSpawner for RelatedSpawnerCommands<'_, ChildOf> {
 // TODO: move to Turret component and use template design pattern for bullet mesh
 fn shoot_bullet(
     mut shoot_event_reader: MessageReader<super::Shoot>,
+    player_children: Query<(&Team, &Children), With<Player>>,
     turrets: Query<&Children, With<BasicTurret>>,
     bullet_spawner: Query<&GlobalTransform, With<super::BulletSpawner>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,
 ) {
-    let colour = Color::srgba(1., 0.0, 0.0, 1.0);
-
     for event in shoot_event_reader.read() {
-        if let Ok(turret_children) = turrets.get(event.turret)
+        if let Ok((team, children)) = player_children.get(event.entity)
+            && let Some(turret_entity) = children
+                .iter()
+                .filter(|child| turrets.contains(**child))
+                .nth(0)
+            && let Ok(turret_children) = turrets.get(*turret_entity)
             && let Some(spawner_transform) = turret_children
                 .into_iter()
                 .filter_map(|t| bullet_spawner.get(*t).ok())
@@ -92,14 +97,14 @@ fn shoot_bullet(
         {
             let bullet = meshes.add(Sphere::new(0.2));
             let bullet_material = materials.add(StandardMaterial {
-                base_color: colour,
+                base_color: **team,
                 ..Default::default()
             });
 
             commands
                 .spawn((
                     Bullet::new(50),
-                    PaintingObject::new(colour),
+                    PaintingObject::new(**team),
                     Mesh3d(bullet.clone()),
                     MeshMaterial3d(bullet_material.clone()),
                     Transform::from(spawner_transform.clone()),

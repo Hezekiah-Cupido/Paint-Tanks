@@ -15,12 +15,14 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 
+use crate::systems::despawn_entity::DespawnEntity;
+
 pub fn plugin(app: &mut App) {
     app.add_systems(Update, paint_surface);
 }
 
 #[derive(Component, Debug)]
-#[require(Transform)]
+#[require(Collider, Sensor, CollisionEventsEnabled, Transform)]
 pub struct Paint;
 
 #[derive(Component, Debug)]
@@ -47,6 +49,7 @@ fn paint_surface(
     spatial_query: SpatialQuery,
     mut painting_objects: Query<(&mut PaintingObject, &GlobalTransform), With<PaintingObject>>,
     paintable_surfaces: Query<&PaintableSurface>,
+    paint: Query<&MeshMaterial3d<StandardMaterial>, With<Paint>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     time: Res<Time>,
@@ -56,15 +59,22 @@ fn paint_surface(
     for (mut painting_object, painting_object_transform) in painting_objects.iter_mut() {
         painting_object.timer.tick(time.delta());
 
-        if let Some(_) = spatial_query.cast_ray_predicate(
+        if let Some(ray_hit_data) = spatial_query.cast_ray_predicate(
             (painting_object_transform.translation() + Vec3::new(0., 0.5, 0.)).into(),
             Dir3::NEG_Y,
             5.,
             false,
             &SpatialQueryFilter::default(),
-            &|entity| paintable_surfaces.contains(entity),
+            &|entity| paintable_surfaces.contains(entity) || paint.contains(entity),
         ) && painting_object.timer.just_finished()
         {
+            if let Ok(mesh_material) = paint.get(ray_hit_data.entity)
+                && let Some(material) = materials.get(mesh_material.0.id())
+                && material.base_color != painting_object.colour
+            {
+                commands.entity(ray_hit_data.entity).insert(DespawnEntity);
+            }
+
             let paint_material = materials.add(StandardMaterial {
                 base_color: painting_object.colour.clone(),
                 ..Default::default()
