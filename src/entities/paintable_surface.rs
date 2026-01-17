@@ -1,4 +1,6 @@
-use avian3d::prelude::{Collider, SpatialQuery, SpatialQueryFilter};
+use avian3d::prelude::{
+    Collider, CollisionEventsEnabled, Sensor, SpatialQuery, SpatialQueryFilter,
+};
 use bevy::{
     app::{App, Update},
     asset::Assets,
