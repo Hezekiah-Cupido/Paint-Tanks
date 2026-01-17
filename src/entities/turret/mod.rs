@@ -7,7 +7,7 @@ use bevy::{
     ecs::{
         component::Component,
         entity::Entity,
-        hierarchy::ChildOf,
+        hierarchy::{ChildOf, Children},
         message::{Message, MessageReader},
         query::With,
         relationship::RelatedSpawnerCommands,
@@ -17,8 +17,10 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 
+use crate::{entities::bullet, tank::Player};
+
 pub fn plugin(app: &mut App) {
-    app.add_plugins(basic_turret::plugin)
+    app.add_plugins((basic_turret::plugin, bullet::plugin))
         .add_message::<TurretMovement>()
         .add_message::<Shoot>()
         .add_systems(Update, move_turret);
@@ -39,12 +41,12 @@ pub struct BulletSpawner;
 
 #[derive(Message)]
 pub struct Shoot {
-    pub turret: Entity,
+    pub entity: Entity,
 }
 
 #[derive(Message)]
 pub struct TurretMovement {
-    pub turret_entity: Entity,
+    pub entity: Entity,
     pub x: f32,
     pub z: f32,
 }
@@ -54,12 +56,18 @@ pub struct Turret;
 
 fn move_turret(
     mut turret_movement_event_reader: MessageReader<TurretMovement>,
+    player_children: Query<&Children, With<Player>>,
     mut turret_transforms: Query<(&mut Transform, &GlobalTransform), With<Turret>>,
     time: Res<bevy::time::Time>,
 ) {
     for event in turret_movement_event_reader.read() {
-        if let Ok((mut turret_transform, turret_global_transform)) =
-            turret_transforms.get_mut(event.turret_entity)
+        if let Ok(children) = player_children.get(event.entity)
+            && let Some(turret_entity) = children
+                .iter()
+                .filter(|child| turret_transforms.contains(**child))
+                .nth(0)
+            && let Ok((mut turret_transform, turret_global_transform)) =
+                turret_transforms.get_mut(*turret_entity)
         {
             let turret_translation = turret_transform.translation.clone();
 
@@ -68,8 +76,6 @@ fn move_turret(
             let z = event.z;
 
             let to_cursor = (Vec3::new(x, y, z) - turret_translation).normalize();
-
-            let _turret_rotation = turret_transform.rotation.clone();
 
             let turret_rotation_x = (turret_global_transform.rotation() * Vec3::X).normalize();
             let turret_rotation_y = turret_global_transform.forward().normalize();

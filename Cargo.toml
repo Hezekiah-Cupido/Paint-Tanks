@@ -14,5 +14,6 @@ bevy-inspector-egui = "0.35.0"
 version = "0.17.3"
 features = [
     "bevy_pbr",
-    "bevy_gltf"
+    "bevy_gltf",
+    "trace"
 ]
