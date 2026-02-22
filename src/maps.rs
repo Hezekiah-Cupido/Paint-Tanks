@@ -29,7 +29,7 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 fn spawn_map(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let map = asset_server.load("plane_map.glb#Scene0");
+    let map = asset_server.load("models/plane_map.glb#Scene0");
 
     commands.spawn((
         Map,

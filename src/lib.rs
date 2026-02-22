@@ -8,7 +8,9 @@ use bevy::{
     color::Color,
     gizmos::{AppGizmoBuilder, config::GizmoConfig},
 };
-use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
+use bevy_inspector_egui::{
+    DefaultInspectorConfigPlugin, bevy_egui::EguiPlugin, quick::WorldInspectorPlugin,
+};
 use entities::lights;
 
 use crate::{entities::paintable_surface, systems::despawn_entity};
@@ -27,17 +29,18 @@ impl Plugin for AppPlugin {
         app.add_plugins((
             DefaultPlugins,
             EguiPlugin::default(),
+            DefaultInspectorConfigPlugin,
             WorldInspectorPlugin::new(),
             PhysicsPlugins::default(),
             PhysicsDebugPlugin::default(),
-            diagnostics::plugin,
+            // diagnostics::plugin,
         ))
         .add_plugins((
             camera::plugin,
             despawn_entity::plugin,
             lights::plugin,
-            maps::plugin,
             paintable_surface::plugin,
+            maps::plugin,
             tank::plugin,
         ))
         .insert_gizmo_config(

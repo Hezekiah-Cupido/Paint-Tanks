@@ -58,7 +58,8 @@ impl TurretSpawner for BasicTurret {
 
 impl BasicTurretSpawner for RelatedSpawnerCommands<'_, ChildOf> {
     fn spawn_basic_turret(&mut self, asset_server: &AssetServer) {
-        let turret = asset_server.load(GltfAssetLabel::Scene(0).from_asset("tank_turret.gltf"));
+        let turret =
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/tank_turret.gltf"));
 
         self.spawn((
             BasicTurret,
