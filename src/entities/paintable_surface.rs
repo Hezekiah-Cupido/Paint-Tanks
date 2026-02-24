@@ -1,45 +1,48 @@
 use avian3d::prelude::{Collider, SpatialQuery, SpatialQueryFilter};
 use bevy::{
     app::{App, Update},
-    asset::{Asset, Assets},
-    color::{Color, LinearRgba},
+    asset::{AssetServer, Assets},
+    color::Color,
     ecs::{
         component::Component,
-        hierarchy::Children,
-        observer::On,
         query::With,
         system::{Commands, Query, Res, ResMut},
     },
     math::{Dir3, Vec3, vec3},
-    pbr::{Material, MaterialPlugin, MeshMaterial3d, StandardMaterial},
-    reflect::TypePath,
-    render::render_resource::AsBindGroup,
-    scene::SceneInstanceReady,
+    pbr::{
+        MeshMaterial3d, StandardMaterial,
+        decal::{ForwardDecal, ForwardDecalMaterial, ForwardDecalMaterialExt},
+    },
+    render::alpha::AlphaMode,
     time::{Time, Timer, TimerMode},
-    transform::components::GlobalTransform,
+    transform::components::{GlobalTransform, Transform},
 };
 
-const PAINT_SHADER_PATH: &str = "shaders/paint_material.wgsl";
+// const PAINT_SHADER_PATH: &str = "shaders/paint_material.wgsl";
 
 pub fn plugin(app: &mut App) {
-    app.add_plugins(MaterialPlugin::<PaintMaterial>::default())
-        .add_systems(Update, paint_surface)
-        .add_observer(add_paint_material_to_map);
+    app
+        //     .add_plugins((
+        //     MaterialPlugin::<PaintMaterial>::default(),
+        //     MaterialPlugin::<ForwardDecalMaterial<PaintMaterial>>::default(),
+        // ))
+        .add_systems(Update, paint_surface);
+    // .add_observer(add_paint_material_to_map);
 }
 
-#[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
-pub struct PaintMaterial {
-    #[uniform(0)]
-    pub coordinates: Vec3,
-    #[uniform(1)]
-    pub colour: LinearRgba,
-}
+// #[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
+// pub struct PaintMaterial {
+//     #[uniform(0)]
+//     pub coordinates: Vec3,
+//     #[uniform(1)]
+//     pub colour: LinearRgba,
+// }
 
-impl Material for PaintMaterial {
-    fn fragment_shader() -> bevy::shader::ShaderRef {
-        PAINT_SHADER_PATH.into()
-    }
-}
+// impl Material for PaintMaterial {
+//     fn fragment_shader() -> bevy::shader::ShaderRef {
+//         PAINT_SHADER_PATH.into()
+//     }
+// }
 
 #[derive(Component, Debug)]
 pub struct PaintingObject {
@@ -61,16 +64,21 @@ impl PaintingObject {
 pub struct PaintableSurface;
 
 fn paint_surface(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
     spatial_query: SpatialQuery,
     mut painting_objects: Query<(&mut PaintingObject, &GlobalTransform), With<PaintingObject>>,
     paintable_surfaces: Query<&PaintableSurface>,
-    mut paint_materials: ResMut<Assets<PaintMaterial>>,
+    // mut paint_materials: ResMut<Assets<PaintMaterial>>,
+    mut decal_materials: ResMut<Assets<ForwardDecalMaterial<StandardMaterial>>>,
     time: Res<Time>,
 ) {
+    let texture = asset_server.load("images/circle.png");
+
     for (mut painting_object, painting_object_transform) in painting_objects.iter_mut() {
         painting_object.timer.tick(time.delta());
 
-        if let Some(_) = spatial_query.cast_ray_predicate(
+        if let Some(ray_hit_data) = spatial_query.cast_ray_predicate(
             (painting_object_transform.translation() + Vec3::new(0., 0.5, 0.)).into(),
             Dir3::NEG_Y,
             5.,
@@ -79,43 +87,68 @@ fn paint_surface(
             &|entity| paintable_surfaces.contains(entity),
         ) && painting_object.timer.just_finished()
         {
-            let paint_material = paint_materials.iter_mut().nth(0).unwrap().1;
+            let paint_material = decal_materials.add(ForwardDecalMaterial {
+                base: StandardMaterial {
+                    base_color: painting_object.colour.into(),
+                    base_color_texture: Some(texture.clone()),
+                    alpha_mode: AlphaMode::Mask(0.5),
+                    ..Default::default()
+                },
+                extension: ForwardDecalMaterialExt {
+                    depth_fade_factor: 1.,
+                },
+            });
 
-            paint_material.colour = painting_object.colour.into();
-            paint_material.coordinates = vec3(
-                painting_object_transform.translation().x,
-                0.,
-                painting_object_transform.translation().z,
-            );
+            let paint_decal = commands
+                .spawn((
+                    ForwardDecal,
+                    MeshMaterial3d(paint_material),
+                    Transform::from_translation(vec3(
+                        painting_object_transform.translation().x,
+                        0.,
+                        painting_object_transform.translation().z,
+                    )),
+                ))
+                .id();
+
+            commands.entity(ray_hit_data.entity).add_child(paint_decal);
+            // let paint_material = paint_materials.iter_mut().nth(0).unwrap().1;
+
+            // paint_material.colour = painting_object.colour.into();
+            // paint_material.coordinates = vec3(
+            //     painting_object_transform.translation().x,
+            //     0.,
+            //     painting_object_transform.translation().z,
+            // );
         }
     }
 }
 
-fn add_paint_material_to_map(
-    trigger: On<SceneInstanceReady>,
-    mut commands: Commands,
-    children: Query<&Children>,
-    paintable_surfaces: Query<&PaintableSurface>,
-    mesh_materials: Query<&MeshMaterial3d<StandardMaterial>>,
-    mut asset_materials: ResMut<Assets<StandardMaterial>>,
-    mut paint_materials: ResMut<Assets<PaintMaterial>>,
-) {
-    if let Ok(_) = paintable_surfaces.get(trigger.entity) {
-        for descendant in children.iter_descendants(trigger.entity) {
-            if let Some(_) = mesh_materials
-                .get(descendant)
-                .ok()
-                .and_then(|id| asset_materials.get_mut(id.id()))
-            {
-                let paint_material = paint_materials.add(PaintMaterial {
-                    coordinates: vec3(0., 0., 0.),
-                    colour: Color::linear_rgba(1., 1., 1., 1.).into(),
-                });
+// fn add_paint_material_to_map(
+//     trigger: On<SceneInstanceReady>,
+//     mut commands: Commands,
+//     children: Query<&Children>,
+//     paintable_surfaces: Query<&PaintableSurface>,
+//     mesh_materials: Query<&MeshMaterial3d<StandardMaterial>>,
+//     mut asset_materials: ResMut<Assets<StandardMaterial>>,
+//     mut paint_materials: ResMut<Assets<PaintMaterial>>,
+// ) {
+//     if let Ok(_) = paintable_surfaces.get(trigger.entity) {
+//         for descendant in children.iter_descendants(trigger.entity) {
+//             if let Some(_) = mesh_materials
+//                 .get(descendant)
+//                 .ok()
+//                 .and_then(|id| asset_materials.get_mut(id.id()))
+//             {
+//                 let paint_material = paint_materials.add(PaintMaterial {
+//                     coordinates: vec3(0., 0., 0.),
+//                     colour: Color::linear_rgba(1., 1., 1., 1.).into(),
+//                 });
 
-                commands
-                    .entity(descendant)
-                    .insert(MeshMaterial3d(paint_material));
-            }
-        }
-    }
-}
+//                 commands
+//                     .entity(descendant)
+//                     .insert(MeshMaterial3d(paint_material));
+//             }
+//         }
+//     }
+// }

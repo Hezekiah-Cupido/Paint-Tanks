@@ -58,7 +58,7 @@ pub struct Health(pub u8);
 pub struct Team(pub Color);
 
 #[derive(Component, Clone, Copy, Debug, PartialEq)]
-#[require(Health(100), Team(Color::srgba(1., 0.0, 0.0, 1.0)))]
+#[require(Health(100), Team(Color::srgba(1., 0., 0., 1.)))]
 pub enum Player {
     User,
     Program,
