@@ -1,5 +1,6 @@
 use bevy::{
     app::{App, Startup},
+    camera::visibility::RenderLayers,
     ecs::{component::Component, system::Commands},
     light::SpotLight,
     math::Vec3,
@@ -20,5 +21,6 @@ fn spawn_light(mut commands: Commands) {
             ..Default::default()
         },
         Transform::from_xyz(0., 15., 0.).looking_at(Vec3::ZERO, Vec3::Y),
+        RenderLayers::layer(0).with(1),
     ));
 }

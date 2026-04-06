@@ -67,11 +67,13 @@ pub enum Player {
 fn spawn_tank(
     mut commands: Commands,
     mut spawn_tank_event_reader: MessageReader<SpawnTank>,
-    spawn_points: Query<&Transform, Without<Inactive>>,
+    spawn_points: Query<(Entity, &Transform), Without<Inactive>>,
     asset_server: Res<AssetServer>,
 ) {
     for event in spawn_tank_event_reader.read() {
-        if let Some(transform) = spawn_points.iter().nth(0) {
+        if let Some((entity, transform)) = spawn_points.iter().nth(0) {
+            commands.entity(entity).insert(Inactive);
+
             event
                 .tank_body
                 .spawn(&mut commands, &asset_server.as_ref())
@@ -93,7 +95,7 @@ fn spawn_tank_keyboard_input(
         let (player, team) = if spawn_point_count == 2 {
             (Player::User, Team(Color::srgb(1., 0., 0.)))
         } else {
-            (Player::Program, Team(Color::BLACK))
+            (Player::Program, Team(Color::WHITE))
         };
 
         spawn_tank_event_writer.write(SpawnTank {
