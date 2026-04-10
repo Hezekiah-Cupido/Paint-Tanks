@@ -18,7 +18,10 @@ use bevy::{
     pbr::{MeshMaterial3d, StandardMaterial},
     prelude::Vec2,
     reflect::TypePath,
-    render::render_resource::{AsBindGroup, TextureFormat},
+    render::{
+        render_resource::{AsBindGroup, ShaderType, TextureFormat},
+        storage::ShaderStorageBuffer,
+    },
     scene::SceneInstanceReady,
     sprite_render::{Material2d, Material2dPlugin, MeshMaterial2d},
     time::{Time, Timer, TimerMode},
@@ -36,16 +39,21 @@ pub fn plugin(app: &mut App) {
 #[derive(Component)]
 struct PaintRenderCamera(Entity);
 
+#[derive(ShaderType, Clone, Copy, Debug, Default)]
+pub struct PaintData {
+    pub coordinates: Vec2,
+    pub colour: LinearRgba,
+}
+
 #[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
 pub struct PaintMaterial {
-    #[uniform(0)]
-    pub coordinates: Vec2,
-    #[uniform(1)]
-    pub colour: LinearRgba,
-    #[texture(2)]
-    #[sampler(3)]
+    #[storage(100, read_only)]
+    pub paint_data_buffer: Handle<ShaderStorageBuffer>,
+
+    #[texture(0)]
+    #[sampler(1)]
     pub texture: Handle<Image>,
-    #[uniform(4)]
+    #[uniform(2)]
     pub mesh_surface_resolution: Vec2,
 }
 
@@ -81,34 +89,44 @@ fn paint_surface(
     mut paint_materials: ResMut<Assets<PaintMaterial>>,
     paint_render_camera: Query<(&Camera, &PaintRenderCamera)>,
     time: Res<Time>,
+    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
 ) {
-    for (mut painting_object, painting_object_transform) in painting_objects.iter_mut() {
-        painting_object.timer.tick(time.delta());
+    if let Some((_, paint_material)) = paint_materials.iter_mut().nth(0) {
+        let mut data = Vec::new();
 
-        if let Some(ray_hit_data) = spatial_query.cast_ray_predicate(
-            (painting_object_transform.translation() + Vec3::new(0., 0.5, 0.)).into(),
-            Dir3::NEG_Y,
-            5.,
-            false,
-            &SpatialQueryFilter::default(),
-            &|entity| paintable_surfaces.contains(entity),
-        ) && painting_object.timer.just_finished()
-            && let Some((camera, _)) = paint_render_camera
-                .iter()
-                .filter(|(_, p)| p.0 == ray_hit_data.entity)
-                .nth(0)
-            && let Some(image_handle) = camera.target.as_image()
-        {
-            let paint_material = paint_materials.iter_mut().nth(0).unwrap().1;
+        let buffer = buffers.get_mut(&paint_material.paint_data_buffer).unwrap();
 
-            paint_material.texture = image_handle.clone();
-            paint_material.colour = painting_object.colour.into();
-            paint_material.coordinates = (
-                painting_object_transform.translation().x,
-                painting_object_transform.translation().z,
-            )
-                .into();
+        for (mut painting_object, painting_object_transform) in painting_objects.iter_mut() {
+            painting_object.timer.tick(time.delta());
+
+            if let Some(ray_hit_data) = spatial_query.cast_ray_predicate(
+                (painting_object_transform.translation() + Vec3::new(0., 0.5, 0.)).into(),
+                Dir3::NEG_Y,
+                5.,
+                false,
+                &SpatialQueryFilter::default(),
+                &|entity| paintable_surfaces.contains(entity),
+            ) && painting_object.timer.just_finished()
+                && let Some((paint_camera, _)) = paint_render_camera
+                    .iter()
+                    .filter(|(_, p)| p.0 == ray_hit_data.entity)
+                    .nth(0)
+                && let Some(image_handle) = paint_camera.target.as_image()
+            {
+                data.push(PaintData {
+                    colour: painting_object.colour.into(),
+                    coordinates: (
+                        painting_object_transform.translation().x,
+                        painting_object_transform.translation().z,
+                    )
+                        .into(),
+                });
+
+                paint_material.texture = image_handle.clone();
+            }
         }
+
+        buffer.set_data(data);
     }
 }
 
@@ -122,6 +140,7 @@ fn add_paint_material_to_map(
     mut asset_materials: ResMut<Assets<StandardMaterial>>,
     mut paint_materials: ResMut<Assets<PaintMaterial>>,
     mut images: ResMut<Assets<Image>>,
+    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
 ) {
     if let Ok((_, collider_aabb)) = paintable_surfaces.get(trigger.entity) {
         for descendant in children.iter_descendants(trigger.entity) {
@@ -136,9 +155,15 @@ fn add_paint_material_to_map(
 
                 let image_handle = images.add(image);
 
-                let paint_material = paint_materials.add(PaintMaterial {
+                let data = vec![PaintData {
                     coordinates: (0., 0.).into(),
                     colour: Color::linear_rgba(1., 1., 1., 1.).into(),
+                }];
+
+                let paint_data_buffer = buffers.add(ShaderStorageBuffer::from(data));
+
+                let paint_material = paint_materials.add(PaintMaterial {
+                    paint_data_buffer: paint_data_buffer,
                     texture: image_handle.clone(),
                     mesh_surface_resolution: (surface_bounding_box.x, surface_bounding_box.z)
                         .into(),

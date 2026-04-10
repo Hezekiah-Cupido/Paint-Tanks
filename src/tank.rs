@@ -95,7 +95,7 @@ fn spawn_tank_keyboard_input(
         let (player, team) = if spawn_point_count == 2 {
             (Player::User, Team(Color::srgb(1., 0., 0.)))
         } else {
-            (Player::Program, Team(Color::WHITE))
+            (Player::Program, Team(Color::srgb(0., 1., 0.)))
         };
 
         spawn_tank_event_writer.write(SpawnTank {
