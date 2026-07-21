@@ -3,7 +3,6 @@ use bevy::{
     diagnostic::{
         FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin, SystemInformationDiagnosticsPlugin,
     },
-    render::diagnostic::RenderDiagnosticsPlugin,
 };
 
 pub fn plugin(app: &mut App) {
@@ -11,6 +10,5 @@ pub fn plugin(app: &mut App) {
         LogDiagnosticsPlugin::default(),
         FrameTimeDiagnosticsPlugin::default(),
         SystemInformationDiagnosticsPlugin::default(),
-        RenderDiagnosticsPlugin::default(),
     ));
 }

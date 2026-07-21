@@ -31,15 +31,16 @@ impl TankBodySpawner for BasicTankBody {
 
 impl BasicTankBodySpawner for Commands<'_, '_> {
     fn spawn_basic_tank_body(&mut self, asset_server: &AssetServer) -> EntityCommands<'_> {
-        let tank_body = asset_server.load(GltfAssetLabel::Scene(0).from_asset("tank_body.gltf"));
+        let tank_body =
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/tank_body.gltf"));
 
         return self.spawn((
             BasicTankBody,
             RigidBody::Dynamic,
-            Collider::cuboid(1., 1., 1.),
+            Collider::cuboid(1., 1., 1.), // TODO: increase collider size and shift up for bullet collisions
             Mass(100.),
             Friction::new(0.9),
             SceneRoot(tank_body),
-        ))
+        ));
     }
 }

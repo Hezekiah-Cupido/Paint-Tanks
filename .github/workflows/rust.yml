@@ -17,7 +17,7 @@ jobs:
         uses: hecrj/setup-rust-action@v2
         with:
           rust-version: stable
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: sudo apt-get update
       - run: sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev libxkbcommon-x11-0 libwayland-dev
       - name: Build
