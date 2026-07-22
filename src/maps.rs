@@ -7,7 +7,6 @@ use bevy::{
         component::Component,
         system::{Commands, Res},
     },
-    prelude::SpawnRelated,
     scene::SceneRoot,
     transform::components::Transform,
 };

@@ -16,7 +16,7 @@ use bevy::{
     math::primitives::Sphere,
     mesh::Mesh,
     pbr::{MeshMaterial3d, StandardMaterial},
-    prelude::{Mesh3d, SpawnRelated},
+    prelude::Mesh3d,
     scene::SceneRoot,
     transform::components::{GlobalTransform, Transform},
 };

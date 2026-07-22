@@ -87,7 +87,7 @@ fn paint_surface(
     mut painting_objects: Query<(&mut PaintingObject, &GlobalTransform), With<PaintingObject>>,
     paintable_surfaces: Query<&PaintableSurface>,
     mut paint_materials: ResMut<Assets<PaintMaterial>>,
-    paint_render_camera: Query<(&Camera, &PaintRenderCamera)>,
+    paint_render_target: Query<(&RenderTarget, &PaintRenderCamera)>,
     time: Res<Time>,
     mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
 ) {
@@ -107,11 +107,11 @@ fn paint_surface(
                 &SpatialQueryFilter::default(),
                 &|entity| paintable_surfaces.contains(entity),
             ) && painting_object.timer.just_finished()
-                && let Some((paint_camera, _)) = paint_render_camera
+                && let Some((render_target, _)) = paint_render_target
                     .iter()
                     .filter(|(_, p)| p.0 == ray_hit_data.entity)
                     .nth(0)
-                && let Some(image_handle) = paint_camera.target.as_image()
+                && let Some(image_handle) = render_target.as_image()
             {
                 data.push(PaintData {
                     colour: painting_object.colour.into(),
@@ -151,7 +151,12 @@ fn add_paint_material_to_map(
             {
                 let surface_bounding_box = collider_aabb.size();
 
-                let image = Image::new_target_texture(1024, 1024, TextureFormat::Rgba8UnormSrgb);
+                let image = Image::new_target_texture(
+                    1024,
+                    1024,
+                    TextureFormat::Rgba8UnormSrgb,
+                    Some(TextureFormat::Rgba8UnormSrgb),
+                );
 
                 let image_handle = images.add(image);
 
@@ -181,9 +186,9 @@ fn add_paint_material_to_map(
                     Camera2d,
                     Camera {
                         order: -1,
-                        target: RenderTarget::Image(image_handle.clone().into()),
                         ..Default::default()
                     },
+                    RenderTarget::Image(image_handle.clone().into()),
                     PaintRenderCamera(trigger.entity.clone()),
                     first_render_layer,
                 ));
