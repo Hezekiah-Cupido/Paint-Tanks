@@ -20,12 +20,12 @@ use bevy::{
     reflect::TypePath,
     render::{
         render_resource::{AsBindGroup, ShaderType, TextureFormat},
-        storage::ShaderStorageBuffer,
+        storage::ShaderBuffer,
     },
-    scene::SceneInstanceReady,
     sprite_render::{Material2d, Material2dPlugin, MeshMaterial2d},
     time::{Time, Timer, TimerMode},
     transform::components::GlobalTransform,
+    world_serialization::WorldInstanceReady,
 };
 
 const PAINT_SHADER_PATH: &str = "shaders/paint_material.wgsl";
@@ -48,7 +48,7 @@ pub struct PaintData {
 #[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
 pub struct PaintMaterial {
     #[storage(100, read_only)]
-    pub paint_data_buffer: Handle<ShaderStorageBuffer>,
+    pub paint_data_buffer: Handle<ShaderBuffer>,
 
     #[texture(0)]
     #[sampler(1)]
@@ -89,12 +89,12 @@ fn paint_surface(
     mut paint_materials: ResMut<Assets<PaintMaterial>>,
     paint_render_target: Query<(&RenderTarget, &PaintRenderCamera)>,
     time: Res<Time>,
-    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
+    mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
     if let Some((_, paint_material)) = paint_materials.iter_mut().nth(0) {
         let mut data = Vec::new();
 
-        let buffer = buffers.get_mut(&paint_material.paint_data_buffer).unwrap();
+        let mut buffer = buffers.get_mut(&paint_material.paint_data_buffer).unwrap();
 
         for (mut painting_object, painting_object_transform) in painting_objects.iter_mut() {
             painting_object.timer.tick(time.delta());
@@ -131,7 +131,7 @@ fn paint_surface(
 }
 
 fn add_paint_material_to_map(
-    trigger: On<SceneInstanceReady>,
+    trigger: On<WorldInstanceReady>,
     mut commands: Commands,
     children: Query<&Children>,
     paintable_surfaces: Query<(&PaintableSurface, &ColliderAabb)>,
@@ -140,15 +140,17 @@ fn add_paint_material_to_map(
     mut asset_materials: ResMut<Assets<StandardMaterial>>,
     mut paint_materials: ResMut<Assets<PaintMaterial>>,
     mut images: ResMut<Assets<Image>>,
-    mut buffers: ResMut<Assets<ShaderStorageBuffer>>,
+    mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
     if let Ok((_, collider_aabb)) = paintable_surfaces.get(trigger.entity) {
         for descendant in children.iter_descendants(trigger.entity) {
-            if let Some(_) = mesh_materials
-                .get(descendant)
-                .ok()
-                .and_then(|id| asset_materials.get_mut(id.id()))
-            {
+            if matches!(
+                mesh_materials
+                    .get(descendant)
+                    .ok()
+                    .and_then(|id| asset_materials.get(id.id())),
+                Some(_)
+            ) {
                 let surface_bounding_box = collider_aabb.size();
 
                 let image = Image::new_target_texture(
@@ -165,7 +167,7 @@ fn add_paint_material_to_map(
                     colour: Color::linear_rgba(1., 1., 1., 1.).into(),
                 }];
 
-                let paint_data_buffer = buffers.add(ShaderStorageBuffer::from(data));
+                let paint_data_buffer = buffers.add(ShaderBuffer::from(data));
 
                 let paint_material = paint_materials.add(PaintMaterial {
                     paint_data_buffer: paint_data_buffer,

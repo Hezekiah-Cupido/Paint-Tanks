@@ -6,7 +6,7 @@ use bevy::{
         system::{Commands, EntityCommands},
     },
     gltf::GltfAssetLabel,
-    scene::SceneRoot,
+    world_serialization::WorldAssetRoot,
 };
 
 use crate::entities::tank_body::{TankBody, TankBodySpawner};
@@ -40,7 +40,7 @@ impl BasicTankBodySpawner for Commands<'_, '_> {
             Collider::cuboid(1., 1., 1.), // TODO: increase collider size and shift up for bullet collisions
             Mass(100.),
             Friction::new(0.9),
-            SceneRoot(tank_body),
+            WorldAssetRoot(tank_body),
         ));
     }
 }
