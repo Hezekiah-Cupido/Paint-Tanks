@@ -67,11 +67,13 @@ pub enum Player {
 fn spawn_tank(
     mut commands: Commands,
     mut spawn_tank_event_reader: MessageReader<SpawnTank>,
-    spawn_points: Query<(Entity, &Transform), Without<Inactive>>,
+    spawn_points: Query<(Entity, &Transform), (With<SpawnPoint>, Without<Inactive>)>,
     asset_server: Res<AssetServer>,
 ) {
     for event in spawn_tank_event_reader.read() {
         if let Some((entity, transform)) = spawn_points.iter().nth(0) {
+            println!("Spawning tank...");
+
             commands.entity(entity).insert(Inactive);
 
             event
@@ -87,7 +89,7 @@ fn spawn_tank(
 
 fn spawn_tank_keyboard_input(
     mut spawn_tank_event_writer: MessageWriter<SpawnTank>,
-    spawn_points: Query<&SpawnPoint, Without<Inactive>>,
+    spawn_points: Query<&SpawnPoint, (With<SpawnPoint>, Without<Inactive>)>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
     if input.just_pressed(KeyCode::Space) {

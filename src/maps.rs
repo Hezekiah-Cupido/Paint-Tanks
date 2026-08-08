@@ -7,9 +7,8 @@ use bevy::{
         component::Component,
         system::{Commands, Res},
     },
-    prelude::SpawnRelated,
-    scene::SceneRoot,
     transform::components::Transform,
+    world_serialization::WorldAssetRoot,
 };
 
 use crate::entities::paintable_surface::PaintableSurface;
@@ -38,7 +37,7 @@ fn spawn_map(mut commands: Commands, asset_server: Res<AssetServer>) {
         Collider::cuboid(10., 0.5, 10.),
         Friction::new(0.9),
         Transform::from_xyz(0., 0., 0.),
-        SceneRoot(map),
+        WorldAssetRoot(map),
         children![
             (SpawnPoint, Transform::from_xyz(0., 0.5, 0.)),
             (SpawnPoint, Transform::from_xyz(4., 0.5, 4.))

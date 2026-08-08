@@ -16,9 +16,9 @@ use bevy::{
     math::primitives::Sphere,
     mesh::Mesh,
     pbr::{MeshMaterial3d, StandardMaterial},
-    prelude::{Mesh3d, SpawnRelated},
-    scene::SceneRoot,
+    prelude::Mesh3d,
     transform::components::{GlobalTransform, Transform},
+    world_serialization::WorldAssetRoot,
 };
 
 use crate::{
@@ -64,7 +64,7 @@ impl BasicTurretSpawner for RelatedSpawnerCommands<'_, ChildOf> {
         self.spawn((
             BasicTurret,
             Transform::from_xyz(0., 0.5, 0.),
-            SceneRoot(turret),
+            WorldAssetRoot(turret),
             children![(
                 BulletSpawner,
                 RigidBody::Kinematic,
