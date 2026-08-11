@@ -11,13 +11,15 @@ use bevy::{
 use bevy_inspector_egui::{
     DefaultInspectorConfigPlugin, bevy_egui::EguiPlugin, quick::WorldInspectorPlugin,
 };
+use bevy_skein::SkeinPlugin;
 use entities::lights;
 
-use crate::{entities::paintable_surface, systems::despawn_entity};
+use crate::{entities::paintable_surface, game_state::GameStatePlugin, systems::despawn_entity};
 
 mod camera;
 mod diagnostics;
 mod entities;
+mod game_state;
 mod maps;
 mod systems;
 mod tank;
@@ -28,19 +30,20 @@ impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             DefaultPlugins,
-            EguiPlugin::default(),
             DefaultInspectorConfigPlugin,
-            WorldInspectorPlugin::new(),
-            PhysicsPlugins::default(),
+            EguiPlugin::default(),
             PhysicsDebugPlugin::default(),
-            // diagnostics::plugin,
+            PhysicsPlugins::default(),
+            SkeinPlugin::default(),
+            WorldInspectorPlugin::new(),
         ))
         .add_plugins((
+            GameStatePlugin,
             camera::plugin,
             despawn_entity::plugin,
+            // diagnostics::plugin,
             lights::plugin,
             paintable_surface::plugin,
-            maps::plugin,
             tank::plugin,
         ))
         .insert_gizmo_config(

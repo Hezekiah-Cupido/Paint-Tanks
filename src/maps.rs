@@ -1,6 +1,5 @@
 use avian3d::prelude::{Collider, Friction, RigidBody};
 use bevy::{
-    app::{App, Startup},
     asset::AssetServer,
     ecs::{
         children,
@@ -23,11 +22,7 @@ pub struct SpawnPoint;
 #[derive(Component)]
 pub struct Map;
 
-pub(super) fn plugin(app: &mut App) {
-    app.add_systems(Startup, spawn_map);
-}
-
-fn spawn_map(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn spawn_map(mut commands: Commands, asset_server: Res<AssetServer>) {
     let map = asset_server.load("models/plane_map.glb#Scene0");
 
     commands.spawn((

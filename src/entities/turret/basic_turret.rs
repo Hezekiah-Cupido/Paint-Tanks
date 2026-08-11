@@ -120,6 +120,7 @@ fn shoot_bullet(
                         let bullet_entity = collision_event.event().collider1;
                         let tank = collision_event.event().collider2;
 
+                        // TODO: send hit event instead and move health check to entity
                         if let Ok(mut player_health) = players.get_mut(tank)
                             && let Ok(bullet) = bullets.get(bullet_entity)
                         {

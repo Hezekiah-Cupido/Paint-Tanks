@@ -9,6 +9,7 @@ use bevy::{
         entity::Entity,
         hierarchy::Children,
         observer::On,
+        prelude::ReflectComponent,
         query::With,
         system::{Commands, Query, Res, ResMut},
     },
@@ -17,7 +18,7 @@ use bevy::{
     mesh::{Mesh, Mesh2d},
     pbr::{MeshMaterial3d, StandardMaterial},
     prelude::Vec2,
-    reflect::TypePath,
+    reflect::{Reflect, TypePath},
     render::{
         render_resource::{AsBindGroup, ShaderType, TextureFormat},
         storage::ShaderBuffer,
@@ -78,7 +79,8 @@ impl PaintingObject {
     }
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Reflect, Debug)]
+#[reflect(Component)]
 #[require(Collider)]
 pub struct PaintableSurface;
 
