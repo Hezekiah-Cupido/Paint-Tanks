@@ -20,12 +20,12 @@ use bevy::{
 use crate::{
     camera::MainCamera,
     entities::{
-        tank_body::{
-            self, Movement, MovementType, TankBodySpawner, basic_tank_body::BasicTankBody,
-        },
-        turret::{self, Shoot, TurretMovement, TurretSpawner, basic_turret::BasicTurret},
+        tank_body::{self, Movement, MovementType, TankBodySpawner},
+        turret::{self, Shoot, TurretMovement, TurretSpawner},
     },
+    game_state::ClearWorld,
     maps::{Inactive, SpawnPoint},
+    systems::despawn_entity::DespawnEntity,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -34,21 +34,22 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                spawn_tank_keyboard_input,
                 spawn_tank,
                 keyboard_input,
                 move_turret_mouse_input,
                 shoot_mouse_input,
+                despawn_tanks,
             ),
         );
 }
 
 #[derive(Message)]
-struct SpawnTank {
-    player: Player,
-    team: Team,
-    turret: Box<dyn TurretSpawner + Send + Sync>,
-    tank_body: Box<dyn TankBodySpawner + Send + Sync>,
+pub struct SpawnTank {
+    pub player: Player,
+    pub team: Team,
+    pub turret: Box<dyn TurretSpawner + Send + Sync>,
+    pub tank_body: Box<dyn TankBodySpawner + Send + Sync>,
+    pub spawn_point: Entity,
 }
 
 #[derive(Component)]
@@ -71,15 +72,16 @@ fn spawn_tank(
     asset_server: Res<AssetServer>,
 ) {
     for event in spawn_tank_event_reader.read() {
-        if let Some((entity, transform)) = spawn_points.iter().nth(0) {
+        if let Ok((spawn_point_entity, spawn_point_transform)) = spawn_points.get(event.spawn_point)
+        {
             println!("Spawning tank...");
 
-            commands.entity(entity).insert(Inactive);
+            commands.entity(spawn_point_entity).insert(Inactive);
 
             event
                 .tank_body
                 .spawn(&mut commands, &asset_server.as_ref())
-                .insert((event.player, event.team, *transform))
+                .insert((event.player, event.team, *spawn_point_transform))
                 .with_children(|parent| {
                     event.turret.spawn_turret(parent, asset_server.as_ref());
                 });
@@ -87,25 +89,15 @@ fn spawn_tank(
     }
 }
 
-fn spawn_tank_keyboard_input(
-    mut spawn_tank_event_writer: MessageWriter<SpawnTank>,
-    spawn_points: Query<&SpawnPoint, (With<SpawnPoint>, Without<Inactive>)>,
-    input: Res<ButtonInput<KeyCode>>,
+fn despawn_tanks(
+    mut commands: Commands,
+    clear_world_reader: MessageReader<ClearWorld>,
+    tanks: Query<Entity, With<Player>>,
 ) {
-    if input.just_pressed(KeyCode::Space) {
-        let spawn_point_count = spawn_points.iter().count();
-        let (player, team) = if spawn_point_count == 2 {
-            (Player::User, Team(Color::srgb(1., 0., 0.)))
-        } else {
-            (Player::Program, Team(Color::srgb(0., 1., 0.)))
-        };
-
-        spawn_tank_event_writer.write(SpawnTank {
-            player: player,
-            team: team,
-            turret: Box::new(BasicTurret {}),
-            tank_body: Box::new(BasicTankBody {}),
-        });
+    if !clear_world_reader.is_empty() {
+        for tank_entity in tanks.iter() {
+            commands.entity(tank_entity).insert(DespawnEntity);
+        }
     }
 }
 

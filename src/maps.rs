@@ -1,17 +1,31 @@
 use avian3d::prelude::{Collider, Friction, RigidBody};
 use bevy::{
-    app::{App, Startup},
+    app::{Plugin, Update},
     asset::AssetServer,
     ecs::{
         children,
         component::Component,
-        system::{Commands, Res},
+        entity::Entity,
+        message::MessageReader,
+        query::With,
+        system::{Commands, Query, Res},
     },
     transform::components::Transform,
     world_serialization::WorldAssetRoot,
 };
 
-use crate::entities::paintable_surface::PaintableSurface;
+use crate::{
+    entities::paintable_surface::PaintableSurface, game_state::ClearWorld,
+    systems::despawn_entity::DespawnEntity,
+};
+
+pub struct MapPlugin;
+
+impl Plugin for MapPlugin {
+    fn build(&self, app: &mut bevy::app::App) {
+        app.add_systems(Update, despawn_map);
+    }
+}
 
 #[derive(Component, Debug)]
 pub struct Inactive;
@@ -20,14 +34,10 @@ pub struct Inactive;
 #[require(Transform)]
 pub struct SpawnPoint;
 
-#[derive(Component)]
-pub struct Map;
+#[derive(Component, Default)]
+struct Map;
 
-pub(super) fn plugin(app: &mut App) {
-    app.add_systems(Startup, spawn_map);
-}
-
-fn spawn_map(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn spawn_map(mut commands: Commands, asset_server: Res<AssetServer>) {
     let map = asset_server.load("models/plane_map.glb#Scene0");
 
     commands.spawn((
@@ -43,4 +53,16 @@ fn spawn_map(mut commands: Commands, asset_server: Res<AssetServer>) {
             (SpawnPoint, Transform::from_xyz(4., 0.5, 4.))
         ],
     ));
+}
+
+fn despawn_map(
+    mut commands: Commands,
+    clear_world_reader: MessageReader<ClearWorld>,
+    maps: Query<Entity, With<Map>>,
+) {
+    if !clear_world_reader.is_empty() {
+        for map_entity in maps.iter() {
+            commands.entity(map_entity).insert(DespawnEntity);
+        }
+    }
 }
