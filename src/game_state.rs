@@ -31,17 +31,22 @@ impl Plugin for GameStatePlugin {
         app.init_resource::<GameResources>()
             .init_state::<GameState>()
             .add_message::<SetGameState>()
+            .add_message::<ClearWorld>()
             .add_systems(Startup, init_in_game_state)
             .add_systems(Update, (input_toggle_game_state, toggle_game_state))
             .add_systems(
                 OnEnter(GameState::InGame),
                 (spawn_map, spawn_players).chain(),
-            );
+            )
+            .add_systems(OnEnter(GameState::EndScreen), clear_world);
     }
 }
 
 #[derive(Debug, Deref, Message)]
 struct SetGameState(GameState);
+
+#[derive(Debug, Message)]
+pub struct ClearWorld;
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq, States)]
 pub enum GameState {
@@ -135,4 +140,8 @@ fn spawn_players(
 
             team_info.is_active = true;
         });
+}
+
+fn clear_world(mut clear_world_writer: MessageWriter<ClearWorld>) {
+    clear_world_writer.write(ClearWorld);
 }

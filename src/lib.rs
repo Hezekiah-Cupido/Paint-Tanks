@@ -14,7 +14,12 @@ use bevy_inspector_egui::{
 use bevy_skein::SkeinPlugin;
 use entities::lights;
 
-use crate::{entities::paintable_surface, game_state::GameStatePlugin, systems::despawn_entity};
+use crate::{
+    entities::paintable_surface::{self, PaintableSurfacePlugin},
+    game_state::GameStatePlugin,
+    maps::MapPlugin,
+    systems::despawn_entity,
+};
 
 mod camera;
 mod diagnostics;
@@ -39,11 +44,12 @@ impl Plugin for AppPlugin {
         ))
         .add_plugins((
             GameStatePlugin,
+            MapPlugin,
+            PaintableSurfacePlugin,
             camera::plugin,
             despawn_entity::plugin,
             // diagnostics::plugin,
             lights::plugin,
-            paintable_surface::plugin,
             tank::plugin,
         ))
         .insert_gizmo_config(

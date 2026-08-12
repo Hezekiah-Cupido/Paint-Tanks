@@ -23,7 +23,9 @@ use crate::{
         tank_body::{self, Movement, MovementType, TankBodySpawner},
         turret::{self, Shoot, TurretMovement, TurretSpawner},
     },
+    game_state::ClearWorld,
     maps::{Inactive, SpawnPoint},
+    systems::despawn_entity::DespawnEntity,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -36,6 +38,7 @@ pub(super) fn plugin(app: &mut App) {
                 keyboard_input,
                 move_turret_mouse_input,
                 shoot_mouse_input,
+                despawn_tanks,
             ),
         );
 }
@@ -86,27 +89,17 @@ fn spawn_tank(
     }
 }
 
-// fn spawn_tank_keyboard_input(
-//     mut spawn_tank_event_writer: MessageWriter<SpawnTank>,
-//     spawn_points: Query<&SpawnPoint, (With<SpawnPoint>, Without<Inactive>)>,
-//     input: Res<ButtonInput<KeyCode>>,
-// ) {
-//     if input.just_pressed(KeyCode::Space) {
-//         let spawn_point_count = spawn_points.iter().count();
-//         let (player, team) = if spawn_point_count == 2 {
-//             (Player::User, Team(Color::srgb(1., 0., 0.)))
-//         } else {
-//             (Player::Program, Team(Color::srgb(0., 1., 0.)))
-//         };
-
-//         spawn_tank_event_writer.write(SpawnTank {
-//             player: player,
-//             team: team,
-//             turret: Box::new(BasicTurret {}),
-//             tank_body: Box::new(BasicTankBody {}),
-//         });
-//     }
-// }
+fn despawn_tanks(
+    mut commands: Commands,
+    clear_world_reader: MessageReader<ClearWorld>,
+    tanks: Query<Entity, With<Player>>,
+) {
+    if !clear_world_reader.is_empty() {
+        for tank_entity in tanks.iter() {
+            commands.entity(tank_entity).insert(DespawnEntity);
+        }
+    }
+}
 
 fn keyboard_input(
     mut movement_event_writer: MessageWriter<Movement>,
